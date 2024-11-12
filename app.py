@@ -6,6 +6,7 @@ from database_connection import (
     agregar_instructor,
     eliminar_instructor,
     obtener_instructores,
+    obtener_turnos,
     reporte_actividades_mas_alumnos,
     reporte_actividades_mayor_ingreso,
     reporte_turnos_mas_clases
@@ -72,8 +73,22 @@ def render_content(tab):
     elif tab == "abm_turnos":
         return html.Div([
             html.H1("ABM de Turnos"),
-            html.P("Aquí podrás realizar el alta, baja y modificación de turnos.")
-        ])
+            html.Div(style={'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center', 'gap': '10px'}, children=[
+                html.Label("Horario inicio:"),
+                dcc.Input(id="input-inicio", type="text"),
+                html.Label("Horario final:"),
+                dcc.Input(id="input-final", type="text"),
+                html.Button("Agregar turno", id="save-turno-btn", n_clicks=0),
+            ]),
+            dcc.Loading(
+                id="loading-turnos",
+                type="default",
+                children=[
+                    html.Div(id="turnos-table"),
+                    html.Div(id="add-turnos-message")
+                ]
+            )
+        ])       
     elif tab == "mod_actividades":
         return html.Div([
             html.H1("Modificación de Actividades"),
@@ -132,6 +147,40 @@ def update_students_report(n_clicks):
             return "No se encontraron datos para el reporte de alumnos."
     return dash.no_update
 
+# Callback para cargar la lista de turnos al seleccionar la pestaña
+@app.callback(
+    Output("turnos-table", "children"),
+    Input("tabs", "value")
+)
+def cargar_turnos(tab):
+    if tab == "abm_turnos":
+        turnos = obtener_turnos()
+        
+        # Convertimos la lista de tuplas en una lista de listas
+        # Verificamos que la tupla tenga el tamaño correcto (id, hora_inicio, hora_fin)
+        data = [list(turno) for turno in turnos] if turnos and all(len(t) == 3 for t in turnos) else []
+        
+        if data:
+            # Crear un DataFrame con los datos obtenidos
+            df = pd.DataFrame(data, columns=["ID", "Hora Inicio", "Hora Fin"])
+            
+            # Generar la tabla en HTML
+            return html.Table([
+                html.Thead(html.Tr([html.Th(col) for col in df.columns] + [html.Th("Eliminar")])),
+                html.Tbody([
+                    html.Tr([
+                        html.Td(df.iloc[i][col]) for col in df.columns
+                    ] + [html.Td(html.Button("X", id={"type": "delete-btn", "index": str(df.iloc[i]["ID"])}))])  # Convertimos el ID a str
+                    for i in range(len(df))
+                ])
+            ], style={"width": "100%", "margin": "0 auto", "textAlign": "center"})
+        else:
+            return "No hay turnos disponibles."
+    
+    return dash.no_update
+
+
+
 @app.callback(
     Output("turns-report-output", "children"),
     [Input("generate-turns-report", "n_clicks")]
@@ -164,6 +213,7 @@ def update_turns_report(n_clicks):
     Output("instructors-table", "children"),
     Input("tabs", "value")
 )
+
 def cargar_instructores(tab):
     if tab == "abm_instructores":
         instructores = obtener_instructores()

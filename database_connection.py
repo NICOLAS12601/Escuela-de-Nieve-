@@ -2,7 +2,7 @@ import pyodbc as odbc
 
 # Parámetros de conexión
 DRIVER_NAME = 'SQL Server'
-SERVER_NAME = 'DESKTOP-GU5EMBG'
+SERVER_NAME = 'PCNICO'
 DATABASE_NAME = 'EscuelaNieve'
 
 # Cadena de conexión
@@ -166,3 +166,20 @@ def eliminar_instructor(ci):
     cursor.execute("DELETE FROM instructores WHERE ci = ?", (ci,))
     conn.commit()
     conn.close()
+    
+# Función para obtener todos los turnos
+def obtener_turnos():
+    conn = conectar_bd()  # Asegúrate de que conectar_bd() esté correctamente definida
+    cursor = conn.cursor()
+    
+    # Consulta SQL actualizada para seleccionar la columna 'id'
+    cursor.execute("SELECT id, hora_inicio, hora_fin FROM turnos")
+    
+    # Recuperamos todos los registros
+    turnos = cursor.fetchall()
+    
+    # Cerramos la conexión a la base de datos
+    conn.close()
+    
+    return turnos
+
