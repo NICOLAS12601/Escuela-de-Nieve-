@@ -183,3 +183,60 @@ def obtener_turnos():
     
     return turnos
 
+def agregar_turno(hora_inicio, hora_fin):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    
+    try:
+        # Consulta para insertar un nuevo turno
+        cursor.execute(
+            "INSERT INTO turnos (hora_inicio, hora_fin) VALUES (?, ?)", 
+            (hora_inicio, hora_fin)
+        )
+        conn.commit()  # Guardamos los cambios en la base de datos
+        return "agregado"  # Indicamos que la operación fue exitosa
+    except Exception as e:
+        print(f"Error al agregar turno: {e}")
+        return "error"  # Indicamos que ocurrió un error
+    finally:
+        conn.close()  # Cerramos la conexión a la base de datos
+
+# Función para eliminar un turno
+def eliminar_turno(turno_id):
+    connection = conectar_bd()
+    if connection is None:
+        return "Error de conexión"
+
+    cursor = connection.cursor()
+
+    # Buscar el turno antes de eliminarlo
+    if not buscar_turno_por_id(cursor, turno_id):
+        cursor.close()
+        connection.close()
+        return "no_existe"
+
+    try:
+        # Ejecutar la eliminación en la base de datos
+        query = "DELETE FROM turnos WHERE id = ?"
+        cursor.execute(query, (turno_id,))
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return "eliminado"
+    except Exception as e:
+        print(f"Error al eliminar turno: {e}")
+        cursor.close()
+        connection.close()
+        return "error"
+
+# Función para buscar un turno por ID
+def buscar_turno_por_id(cursor, turno_id):
+    # Ejecutar la consulta para verificar si el turno existe
+    query = "SELECT * FROM turnos WHERE id = ?"
+    cursor.execute(query, (turno_id,))
+    resultado = cursor.fetchone()
+    
+    # Si el resultado no es None, significa que el turno existe
+    return resultado is not None
+
+
