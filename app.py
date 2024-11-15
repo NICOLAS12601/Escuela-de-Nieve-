@@ -1,4 +1,3 @@
-
 import pyodbc as odbc
 import dash
 from dash import dcc, html, Dash, Input, Output, State, ALL
