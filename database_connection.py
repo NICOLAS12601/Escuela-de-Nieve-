@@ -2,7 +2,7 @@ import pyodbc as odbc
 
 # Parámetros de conexión
 DRIVER_NAME = 'SQL Server'
-SERVER_NAME = 'DESKTOP-GU5EMBG'
+SERVER_NAME = 'PCNICO'
 DATABASE_NAME = 'EscuelaNieve'
 
 # Cadena de conexión
@@ -166,3 +166,77 @@ def eliminar_instructor(ci):
     cursor.execute("DELETE FROM instructores WHERE ci = ?", (ci,))
     conn.commit()
     conn.close()
+    
+# Función para obtener todos los turnos
+def obtener_turnos():
+    conn = conectar_bd()  # Asegúrate de que conectar_bd() esté correctamente definida
+    cursor = conn.cursor()
+    
+    # Consulta SQL actualizada para seleccionar la columna 'id'
+    cursor.execute("SELECT id, hora_inicio, hora_fin FROM turnos")
+    
+    # Recuperamos todos los registros
+    turnos = cursor.fetchall()
+    
+    # Cerramos la conexión a la base de datos
+    conn.close()
+    
+    return turnos
+
+def agregar_turno(hora_inicio, hora_fin):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    
+    try:
+        # Consulta para insertar un nuevo turno
+        cursor.execute(
+            "INSERT INTO turnos (hora_inicio, hora_fin) VALUES (?, ?)", 
+            (hora_inicio, hora_fin)
+        )
+        conn.commit()  # Guardamos los cambios en la base de datos
+        return "agregado"  # Indicamos que la operación fue exitosa
+    except Exception as e:
+        print(f"Error al agregar turno: {e}")
+        return "error"  # Indicamos que ocurrió un error
+    finally:
+        conn.close()  # Cerramos la conexión a la base de datos
+
+# Función para eliminar un turno
+def eliminar_turno(turno_id):
+    connection = conectar_bd()
+    if connection is None:
+        return "Error de conexión"
+
+    cursor = connection.cursor()
+
+    # Buscar el turno antes de eliminarlo
+    if not buscar_turno_por_id(cursor, turno_id):
+        cursor.close()
+        connection.close()
+        return "no_existe"
+
+    try:
+        # Ejecutar la eliminación en la base de datos
+        query = "DELETE FROM turnos WHERE id = ?"
+        cursor.execute(query, (turno_id,))
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return "eliminado"
+    except Exception as e:
+        print(f"Error al eliminar turno: {e}")
+        cursor.close()
+        connection.close()
+        return "error"
+
+# Función para buscar un turno por ID
+def buscar_turno_por_id(cursor, turno_id):
+    # Ejecutar la consulta para verificar si el turno existe
+    query = "SELECT * FROM turnos WHERE id = ?"
+    cursor.execute(query, (turno_id,))
+    resultado = cursor.fetchone()
+    
+    # Si el resultado no es None, significa que el turno existe
+    return resultado is not None
+
+
