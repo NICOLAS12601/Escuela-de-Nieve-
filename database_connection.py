@@ -2,7 +2,7 @@ import pyodbc as odbc
 
 # Parámetros de conexión
 DRIVER_NAME = 'SQL Server'
-SERVER_NAME = 'PCNICO'
+SERVER_NAME = 'DIEGOPC'
 DATABASE_NAME = 'EscuelaNieve'
 
 # Cadena de conexión

@@ -84,7 +84,8 @@ def render_content(tab):
                 dcc.Input(id="input-nombre", type="text", placeholder="Nombre del Instructor"),
                 html.Label("Apellido:"),
                 dcc.Input(id="input-apellido", type="text", placeholder="Apellido del Instructor"),
-                html.Button("Agregar Instructor", id="save-instructor-btn", n_clicks=0)
+                html.Button("Agregar", id="save-instructor-btn", n_clicks=0),
+                html.Button("Modificar", id="update-instructor-btn", n_clicks=0)
             ]),
             dcc.Loading(
                 id="loading-instructors",
