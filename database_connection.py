@@ -2,7 +2,7 @@ import pyodbc as odbc
 
 # Parámetros de conexión
 DRIVER_NAME = 'SQL Server'
-SERVER_NAME = 'PCNICO'
+SERVER_NAME = 'DESKTOP-GU5EMBG'
 DATABASE_NAME = 'EscuelaNieve'
 
 # Cadena de conexión
@@ -22,23 +22,6 @@ def conectar_bd():
     except odbc.Error as e:
         print("Error al conectar a la base de datos:", e)
         return None
-
-# Función para agregar un alumno
-def agregar_alumno(ci, nombre, apellido, fecha_nacimiento, telefono, correo):
-    try:
-        conn = conectar_bd()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO alumnos (ci, nombre, apellido, fecha_nacimiento, telefono, correo)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (ci, nombre, apellido, fecha_nacimiento, telefono, correo))
-        conn.commit()
-        print("Alumno agregado exitosamente.")
-    except odbc.Error as e:
-        print("Error al agregar alumno:", e)
-    finally:
-        if 'conn' in locals():
-            conn.close()
 
 # Función para generar reporte de actividades con mayor ingreso
 def reporte_actividades_mayor_ingreso():
@@ -80,20 +63,20 @@ def reporte_actividades_mas_alumnos():
             FROM 
                 clase c
                 JOIN actividades a ON c.id_actividad = a.id
-                JOIN alumno_clase ac ON ac.id_clase = c.id
+                LEFT JOIN alumno_clase ac ON ac.id_clase = c.id
             GROUP BY 
                 a.descripcion
             ORDER BY 
                 cantidad_alumnos DESC
         """)
         rows = cursor.fetchall()
+        print("Datos retornados en reporte_actividades_mas_alumnos:", rows)
         return rows
     except odbc.Error as e:
         print("Error al generar el reporte:", e)
         return []
     finally:
-        if 'conn' in locals():
-            conn.close()
+        conn.close()
 
 def reporte_turnos_mas_clases():
     try:
@@ -101,25 +84,24 @@ def reporte_turnos_mas_clases():
         cursor = conn.cursor()
         cursor.execute("""
             SELECT 
-                t.hora_inicio,
-                t.hora_fin,
+                CONCAT(CONVERT(VARCHAR(5), t.hora_inicio, 108), ' - ', CONVERT(VARCHAR(5), t.hora_fin, 108)) AS turno,
                 COUNT(c.id) AS cantidad_clases
             FROM 
                 clase c
                 JOIN turnos t ON c.id_turno = t.id
             GROUP BY 
-                t.hora_inicio, t.hora_fin
+                CONVERT(VARCHAR(5), t.hora_inicio, 108), CONVERT(VARCHAR(5), t.hora_fin, 108)
             ORDER BY 
                 cantidad_clases DESC
         """)
         rows = cursor.fetchall()
+        print("Datos retornados en reporte_turnos_mas_clases:", rows)
         return rows
     except odbc.Error as e:
         print("Error al generar el reporte:", e)
         return []
     finally:
-        if 'conn' in locals():
-            conn.close()
+        conn.close()
 
 # Ejemplo de uso de la conexión para ejecutar una consulta de prueba
 try:
@@ -163,13 +145,20 @@ def agregar_instructor(ci, nombre, apellido):
 def eliminar_instructor(ci):
     conn = conectar_bd()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM instructores WHERE ci = ?", (ci,))
-    conn.commit()
-    conn.close()
+    try:
+        cursor.execute("DELETE FROM instructores WHERE ci = ?", (ci,))
+        conn.commit()
+        return "eliminado"
+    except odbc.Error as e:
+        print(f"Error al eliminar instructor: {e}")
+        return "error"
+    finally:
+        conn.close()
+
     
 # Función para obtener todos los turnos
 def obtener_turnos():
-    conn = conectar_bd()  # Asegúrate de que conectar_bd() esté correctamente definida
+    conn = conectar_bd()  
     cursor = conn.cursor()
     
     # Consulta SQL actualizada para seleccionar la columna 'id'
@@ -203,31 +192,17 @@ def agregar_turno(hora_inicio, hora_fin):
 
 # Función para eliminar un turno
 def eliminar_turno(turno_id):
-    connection = conectar_bd()
-    if connection is None:
-        return "Error de conexión"
-
-    cursor = connection.cursor()
-
-    # Buscar el turno antes de eliminarlo
-    if not buscar_turno_por_id(cursor, turno_id):
-        cursor.close()
-        connection.close()
-        return "no_existe"
-
+    conn = conectar_bd()
+    cursor = conn.cursor()
     try:
-        # Ejecutar la eliminación en la base de datos
-        query = "DELETE FROM turnos WHERE id = ?"
-        cursor.execute(query, (turno_id,))
-        connection.commit()
-        cursor.close()
-        connection.close()
+        cursor.execute("DELETE FROM turnos WHERE id = ?", (turno_id,))
+        conn.commit()
         return "eliminado"
-    except Exception as e:
+    except odbc.Error as e:
         print(f"Error al eliminar turno: {e}")
-        cursor.close()
-        connection.close()
         return "error"
+    finally:
+        conn.close()
 
 # Función para buscar un turno por ID
 def buscar_turno_por_id(cursor, turno_id):
@@ -239,4 +214,191 @@ def buscar_turno_por_id(cursor, turno_id):
     # Si el resultado no es None, significa que el turno existe
     return resultado is not None
 
+def obtener_actividades():
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, descripcion, costo FROM actividades")
+    actividades = cursor.fetchall()
+    conn.close()
+    return actividades
 
+def agregar_actividad(descripcion, costo):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO actividades (descripcion, costo) VALUES (?, ?)",
+            (descripcion, costo)
+        )
+        conn.commit()
+        return "ok"
+    except odbc.Error as e:
+        print("Error al agregar actividad:", e)
+        return "error"
+    finally:
+        conn.close()
+
+def eliminar_actividad(id):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM actividades WHERE id = ?", (id,))
+        conn.commit()
+        return "ok"
+    except odbc.Error as e:
+        print(f"Error al eliminar actividad: {e}")
+        return "error"
+    finally:
+        conn.close()
+
+def obtener_alumnos():
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    cursor.execute("SELECT ci, nombre, apellido, telefono, correo FROM alumnos")
+    alumnos = cursor.fetchall()
+    conn.close()
+    return alumnos
+
+def agregar_alumno(ci, nombre, apellido, telefono, correo):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO alumnos (ci, nombre, apellido, telefono, correo)
+            VALUES (?, ?, ?, ?, ?)
+        """, (ci, nombre, apellido, telefono, correo))
+        conn.commit()
+        return "ok"
+    except odbc.IntegrityError:
+        return "existe"
+    except Exception as e:
+        print(f"Error al agregar alumno: {e}")
+        return "error"
+    finally:
+        conn.close()
+
+def eliminar_alumno(ci):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM alumnos WHERE ci = ?", (ci,))
+        conn.commit()
+        return "ok"
+    except odbc.IntegrityError:
+        return "referenciado"  # Si el alumno está en uso en otras tablas
+    finally:
+        conn.close()
+
+# Función para agregar una nueva clase
+def agregar_clase(ci_instructor, id_actividad, id_turno):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO clase (ci_instructor, id_actividad, id_turno)
+            VALUES (?, ?, ?)
+        """, (ci_instructor, id_actividad, id_turno))
+        conn.commit()
+        return "ok"
+    except odbc.Error as e:
+        print("Error al agregar clase:", e)
+        return "error"
+    finally:
+        conn.close()
+
+def obtener_clases():
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            c.id,
+            i.nombre AS instructor_nombre,
+            i.apellido AS instructor_apellido,
+            a.descripcion AS actividad_descripcion,
+            t.hora_inicio,
+            t.hora_fin
+        FROM 
+            clase c
+            JOIN instructores i ON c.ci_instructor = i.ci
+            JOIN actividades a ON c.id_actividad = a.id
+            JOIN turnos t ON c.id_turno = t.id
+    """)
+    # Obtener los nombres de las columnas
+    columns = [column[0] for column in cursor.description]
+    clases = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    conn.close()
+    return clases
+
+def eliminar_clase(clase_id):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM clase WHERE id = ?", (clase_id,))
+        conn.commit()
+        return "ok"
+    except odbc.Error as e:
+        print("Error al eliminar la clase:", e)
+        return "error"
+    finally:
+        conn.close()
+        
+def obtener_inscripciones():
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            ac.id_clase,
+            ac.ci_alumno,
+            al.nombre AS alumno_nombre,
+            al.apellido AS alumno_apellido,
+            c.id AS clase_id,
+            a.descripcion AS actividad_descripcion,
+            i.nombre AS instructor_nombre,
+            i.apellido AS instructor_apellido,
+            t.hora_inicio,
+            t.hora_fin,
+            ac.alquiler
+        FROM 
+            alumno_clase ac
+            JOIN alumnos al ON ac.ci_alumno = al.ci
+            JOIN clase c ON ac.id_clase = c.id
+            JOIN actividades a ON c.id_actividad = a.id
+            JOIN instructores i ON c.ci_instructor = i.ci
+            JOIN turnos t ON c.id_turno = t.id
+    """)
+    columns = [column[0] for column in cursor.description]
+    inscripciones = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    conn.close()
+    return inscripciones
+
+def agregar_inscripcion(clase_id, ci_alumno, alquiler):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO alumno_clase (id_clase, ci_alumno, alquiler)
+            VALUES (?, ?, ?)
+        """, (clase_id, ci_alumno, alquiler))
+        conn.commit()
+        return "ok"
+    except odbc.Error as e:
+        print("Error al agregar inscripción:", e)
+        return "error"
+    finally:
+        conn.close()
+
+def eliminar_inscripcion(clase_id, ci_alumno):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            DELETE FROM alumno_clase 
+            WHERE id_clase = ? AND ci_alumno = ?
+        """, (clase_id, ci_alumno))
+        conn.commit()
+        return "ok"
+    except odbc.Error as e:
+        print("Error al eliminar inscripción:", e)
+        return "error"
+    finally:
+        conn.close()

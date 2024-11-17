@@ -91,10 +91,10 @@ VALUES ('09:00', '11:00'),
        ('12:00', '14:00'),
        ('16:00', '18:00');
 
-INSERT INTO alumnos (ci, nombre, apellido, fecha_nacimiento, telefono, correo)
-VALUES ('55555555', 'Ana', 'Lopez', '2002-05-15', '091234567', 'ana.lopez@example.com'),
-       ('66666666', 'Luis', 'Martinez', '1999-10-20', '098765432', 'luis.martinez@example.com'),
-       ('77777777', 'Sofia', 'Gomez', '2001-03-12', '099876543', 'sofia.gomez@example.com');
+INSERT INTO alumnos (ci, nombre, apellido, telefono, correo)
+VALUES ('55555555', 'Ana', 'Lopez', '091234567', 'ana.lopez@gmail.com'),
+       ('66666666', 'Luis', 'Martinez', '098765432', 'luis.martinez@hotmail.com'),
+       ('77777777', 'Sofia', 'Gomez', '099876543', 'sofia.gomez@gmail.com');
 
 INSERT INTO clase (ci_instructor, id_actividad, id_turno, dictada)
 VALUES ('12345678', 1, 1, 0), -- Snowboard con Juan en el turno de 9:00 a 11:00
@@ -106,3 +106,27 @@ VALUES (1, '55555555', 1, 1), -- Ana en Snowboard, alquilo tabla
        (2, '66666666', NULL, 0), -- Luis en Ski, equipo propio
        (3, '77777777', 5, 1); -- Sofia en Moto de nieve, alquilo moto
 
+ALTER TABLE alumno_clase
+ADD CONSTRAINT FK__alumno_cl__id_cl__72C60C4A
+FOREIGN KEY (id_clase) REFERENCES clase(id)
+ON DELETE CASCADE;
+
+ALTER TABLE clase
+ADD CONSTRAINT FK_clase_instructor
+FOREIGN KEY (ci_instructor) REFERENCES instructores(ci)
+ON DELETE CASCADE;
+
+ALTER TABLE clase
+ADD CONSTRAINT FK_clase_actividad
+FOREIGN KEY (id_actividad) REFERENCES actividades(id)
+ON DELETE CASCADE;
+
+ALTER TABLE clase
+ADD CONSTRAINT FK_clase_turno
+FOREIGN KEY (id_turno) REFERENCES turnos(id)
+ON DELETE CASCADE;
+
+ALTER TABLE equipamiento
+ADD CONSTRAINT FK_Equipamiento_Actividad
+FOREIGN KEY (id_actividad) REFERENCES actividades(id)
+ON DELETE CASCADE;
