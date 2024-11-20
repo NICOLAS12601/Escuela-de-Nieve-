@@ -28,27 +28,58 @@ from database_connection import (
     obtener_alumnos,
     reporte_actividades_mas_alumnos,
     reporte_actividades_mayor_ingreso,
-    reporte_turnos_mas_clases
+    reporte_turnos_mas_clases,
+    validate_user
 )
 from decimal import Decimal
+
 
 
 # Inicializar la aplicación Dash con suppress_callback_exceptions=True
 app = Dash(__name__, suppress_callback_exceptions=True)
 
-# Layout de la aplicación con pestañas
-app.layout = html.Div([
-    dcc.Tabs(id="tabs", value="reportes", children=[
-        dcc.Tab(label="Reportes", value="reportes"),
-        dcc.Tab(label="ABM Instructores", value="abm_instructores"),
-        dcc.Tab(label="ABM Turnos", value="abm_turnos"),
-        dcc.Tab(label="ABM Actividades", value="abm_actividades"),
-        dcc.Tab(label="ABM Alumnos", value="abm_alumnos"),
-        dcc.Tab(label="ABM Clases", value="abm_clases"),
-        dcc.Tab(label="ABM Inscripciones", value="abm_inscripciones")
-    ]),
-    html.Div(id="tabs-content")  # Contenedor para el contenido de las pestañas
+# Layout inicial con el formulario de login
+app.layout = html.Div(id="main-content", children=[
+    html.Div(id="login-form", children=[
+        html.H3("Login"),
+        dcc.Input(id="correo", type="email", placeholder="Correo electrónico"),
+        dcc.Input(id="contrasena", type="password", placeholder="Contraseña"),
+        html.Button("Aceptar", id="login-button"),
+        html.Div(id="login-message")  # Para mostrar mensajes de error
+    ])
 ])
+
+# Callback para manejar el inicio de sesión
+@app.callback(
+    [Output("main-content", "children"), Output("login-message", "children")],
+    [Input("login-button", "n_clicks")],
+    [State("correo", "value"), State("contrasena", "value")]
+)
+def login(n_clicks, correo, contrasena):
+    if n_clicks is None:
+        return dash.no_update, ""  # No actualiza nada y deja vacío el mensaje
+
+    if not correo or not contrasena:
+        return dash.no_update, "Por favor, ingrese su correo y contraseña."
+
+    if validate_user(correo, contrasena):
+        # Layout de la aplicación con pestañas
+        return html.Div([
+            dcc.Tabs(id="tabs", value="reportes", children=[
+                dcc.Tab(label="Reportes", value="reportes"),
+                dcc.Tab(label="ABM Instructores", value="abm_instructores"),
+                dcc.Tab(label="ABM Turnos", value="abm_turnos"),
+                dcc.Tab(label="ABM Actividades", value="abm_actividades"),
+                dcc.Tab(label="ABM Alumnos", value="abm_alumnos"),
+                dcc.Tab(label="ABM Clases", value="abm_clases"),
+                dcc.Tab(label="ABM Inscripciones", value="abm_inscripciones")
+            ]),
+            html.Div(id="tabs-content")  # Contenedor para el contenido de las pestañas
+        ]), ""  # Limpia el mensaje de error si el login es exitoso
+
+    # Si la validación falla, muestra un mensaje de error
+    return dash.no_update, "Usuario o contraseña incorrectos."
+
 # Callback para actualizar el contenido según la pestaña seleccionada
 @app.callback(
     Output("tabs-content", "children"),
