@@ -2,7 +2,7 @@ import pyodbc as odbc
 
 # Parámetros de conexión
 DRIVER_NAME = 'SQL Server'
-SERVER_NAME = 'DESKTOP-GU5EMBG'
+SERVER_NAME = 'PCNICO'
 DATABASE_NAME = 'EscuelaNieve'
 
 # Cadena de conexión
@@ -402,3 +402,14 @@ def eliminar_inscripcion(clase_id, ci_alumno):
         return "error"
     finally:
         conn.close()
+
+# Función para validar las credenciales de usuario
+def validate_user(correo, contrasena):
+    # Conexión a la base de datos SQLite
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    query = "SELECT * FROM login WHERE correo = ? AND contrasena = ?"
+    cursor.execute(query, (correo, contrasena))
+    result = cursor.fetchone()
+    conn.close()
+    return result is not None
