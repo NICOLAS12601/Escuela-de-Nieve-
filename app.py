@@ -1,5 +1,3 @@
-import numpy as np
-import pyodbc as odbc
 import dash
 from dash import dcc, html, Dash, Input, Output, State, ALL
 from dash import callback_context

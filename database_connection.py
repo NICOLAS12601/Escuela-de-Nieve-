@@ -22,6 +22,22 @@ def conectar_bd():
     except odbc.Error as e:
         print("Error al conectar a la base de datos:", e)
         return None
+    
+    # Ejemplo de uso de la conexión para ejecutar una consulta de prueba
+try:
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM equipamiento")
+        rows = cursor.fetchall()
+        for row in rows:
+            print(row)
+except odbc.Error as e:
+    print("Error al conectar o ejecutar la consulta de prueba:", e)
+finally:
+    if 'conn' in locals():
+        conn.close()
+        print("Conexión cerrada.")
 
 # Función para generar reporte de actividades con mayor ingreso
 def reporte_actividades_mayor_ingreso():
@@ -96,22 +112,6 @@ def reporte_turnos_mas_clases():
         return []
     finally:
         conn.close()
-
-# Ejemplo de uso de la conexión para ejecutar una consulta de prueba
-try:
-    conn = conectar_bd()
-    if conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM equipamiento")
-        rows = cursor.fetchall()
-        for row in rows:
-            print(row)
-except odbc.Error as e:
-    print("Error al conectar o ejecutar la consulta de prueba:", e)
-finally:
-    if 'conn' in locals():
-        conn.close()
-        print("Conexión cerrada.")
 
 # Función para obtener todos los instructores
 def obtener_instructores():
