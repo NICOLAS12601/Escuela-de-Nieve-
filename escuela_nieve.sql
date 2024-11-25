@@ -106,6 +106,9 @@ VALUES (1, '55555555', 1, 1), -- Ana en Snowboard, alquilo tabla
        (2, '66666666', NULL, 0), -- Luis en Ski, equipo propio
        (3, '77777777', 5, 1); -- Sofia en Moto de nieve, alquilo moto
 
+INSERT INTO login (correo, contrasena)
+VALUES ('admin@gmail.com', 'admin123')
+
 ALTER TABLE alumno_clase
 ADD CONSTRAINT FK__alumno_cl__id_cl__72C60C4A
 FOREIGN KEY (id_clase) REFERENCES clase(id)

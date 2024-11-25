@@ -2,7 +2,7 @@ import pyodbc as odbc
 
 # Parámetros de conexión
 DRIVER_NAME = 'SQL Server'
-SERVER_NAME = 'PCNICO'
+SERVER_NAME = 'DESKTOP-GU5EMBG'
 DATABASE_NAME = 'EscuelaNieve'
 
 # Cadena de conexión
@@ -25,32 +25,26 @@ def conectar_bd():
 
 # Función para generar reporte de actividades con mayor ingreso
 def reporte_actividades_mayor_ingreso():
-    try:
-        conn = conectar_bd()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT 
-                a.descripcion AS actividad,
-                SUM(a.costo + COALESCE(e.costo, 0)) AS ingresos_totales
-            FROM 
-                clase c
-                JOIN actividades a ON c.id_actividad = a.id
-                LEFT JOIN alumno_clase ac ON ac.id_clase = c.id
-                LEFT JOIN equipamiento e ON ac.id_equipamiento = e.id
-            GROUP BY 
-                a.descripcion
-            ORDER BY 
-                ingresos_totales DESC
-        """)
-        rows = cursor.fetchall()
-        print("Datos obtenidos del reporte:", rows)  # Verifica que los datos se obtienen
-        return rows
-    except odbc.Error as e:
-        print("Error al generar el reporte:", e)
-        return []
-    finally:
-        if 'conn' in locals():
-            conn.close()
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            a.descripcion AS actividad,
+            SUM(act.costo) AS ingresos_actividad,
+            SUM(ISNULL(e.costo, 0)) AS ingresos_equipamiento,
+            SUM(act.costo) + SUM(ISNULL(e.costo, 0)) AS ingresos_totales
+        FROM actividades a
+        JOIN clase c ON a.id = c.id_actividad
+        JOIN alumno_clase ac ON c.id = ac.id_clase
+        JOIN actividades act ON c.id_actividad = act.id
+        LEFT JOIN equipamiento e ON ac.id_equipamiento = e.id
+        GROUP BY a.descripcion
+        ORDER BY ingresos_totales DESC
+    """)
+    data = cursor.fetchall()
+    conn.close()
+    return data
+
 
 def reporte_actividades_mas_alumnos():
     try:
@@ -347,38 +341,38 @@ def obtener_inscripciones():
     cursor = conn.cursor()
     cursor.execute("""
         SELECT 
-            ac.id_clase,
-            ac.ci_alumno,
-            al.nombre AS alumno_nombre,
-            al.apellido AS alumno_apellido,
-            c.id AS clase_id,
-            a.descripcion AS actividad_descripcion,
-            i.nombre AS instructor_nombre,
-            i.apellido AS instructor_apellido,
+            i.id_clase,
+            i.ci_alumno,
+            a.nombre AS alumno_nombre,
+            a.apellido AS alumno_apellido,
+            act.descripcion AS actividad_descripcion,
+            inst.nombre AS instructor_nombre,
+            inst.apellido AS instructor_apellido,
             t.hora_inicio,
             t.hora_fin,
-            ac.alquiler
-        FROM 
-            alumno_clase ac
-            JOIN alumnos al ON ac.ci_alumno = al.ci
-            JOIN clase c ON ac.id_clase = c.id
-            JOIN actividades a ON c.id_actividad = a.id
-            JOIN instructores i ON c.ci_instructor = i.ci
-            JOIN turnos t ON c.id_turno = t.id
+            e.descripcion AS equipamiento_descripcion,
+            i.alquiler
+        FROM alumno_clase i
+        JOIN alumnos a ON i.ci_alumno = a.ci
+        JOIN clase c ON i.id_clase = c.id
+        JOIN actividades act ON c.id_actividad = act.id
+        JOIN instructores inst ON c.ci_instructor = inst.ci
+        JOIN turnos t ON c.id_turno = t.id
+        LEFT JOIN equipamiento e ON i.id_equipamiento = e.id
     """)
     columns = [column[0] for column in cursor.description]
     inscripciones = [dict(zip(columns, row)) for row in cursor.fetchall()]
     conn.close()
     return inscripciones
 
-def agregar_inscripcion(clase_id, ci_alumno, alquiler):
+def agregar_inscripcion(id_clase, ci_alumno, id_equipamiento, alquiler):
     conn = conectar_bd()
     cursor = conn.cursor()
     try:
-        cursor.execute("""
-            INSERT INTO alumno_clase (id_clase, ci_alumno, alquiler)
-            VALUES (?, ?, ?)
-        """, (clase_id, ci_alumno, alquiler))
+        cursor.execute(
+            "INSERT INTO alumno_clase (id_clase, ci_alumno, id_equipamiento, alquiler) VALUES (?, ?, ?, ?)",
+            (id_clase, ci_alumno, id_equipamiento, alquiler)
+        )
         conn.commit()
         return "ok"
     except odbc.Error as e:
@@ -413,3 +407,103 @@ def validate_user(correo, contrasena):
     result = cursor.fetchone()
     conn.close()
     return result is not None
+
+def obtener_equipamientos():
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            e.id,
+            e.descripcion,
+            e.costo,
+            a.descripcion AS actividad_descripcion
+        FROM equipamiento e
+        JOIN actividades a ON e.id_actividad = a.id
+    """)
+    equipamientos = cursor.fetchall()
+    conn.close()
+    return equipamientos
+
+def agregar_equipamiento(descripcion, costo, id_actividad):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO equipamiento (descripcion, costo, id_actividad) VALUES (?, ?, ?)",
+            (descripcion, costo, id_actividad)
+        )
+        conn.commit()
+        return "ok"
+    except odbc.Error as e:
+        print("Error al agregar equipamiento:", e)
+        return "error"
+    finally:
+        conn.close()
+
+def eliminar_equipamiento(id_equipamiento):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM equipamiento WHERE id = ?", (id_equipamiento,))
+        conn.commit()
+        return "ok"
+    except odbc.Error as e:
+        # Obtener el número de error
+        error_code = e.args[0]
+        if error_code == '23000':
+            # Código de error de violación de restricción de clave foránea
+            print("Error al eliminar equipamiento:", e)
+            return "referenciado"
+        else:
+            print("Error al eliminar equipamiento:", e)
+            return "error"
+    finally:
+        conn.close()
+
+def obtener_actividad_de_clase(id_clase):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT id_actividad FROM clase WHERE id = ?", (id_clase,))
+        result = cursor.fetchone()
+        return result[0] if result else None
+    except odbc.Error as e:
+        print("Error al obtener actividad de la clase:", e)
+        return None
+    finally:
+        conn.close()
+
+def obtener_actividad_de_equipamiento(id_equipamiento):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT id_actividad FROM equipamiento WHERE id = ?", (id_equipamiento,))
+        result = cursor.fetchone()
+        return result[0] if result else None
+    except odbc.Error as e:
+        print("Error al obtener actividad del equipamiento:", e)
+        return None
+    finally:
+        conn.close()
+
+def obtener_equipamientos_por_actividad(id_actividad):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT 
+                e.id,
+                e.descripcion,
+                e.costo,
+                a.descripcion AS actividad_descripcion
+            FROM equipamiento e
+            JOIN actividades a ON e.id_actividad = a.id
+            WHERE e.id_actividad = ?
+        """, (id_actividad,))
+        equipamientos = cursor.fetchall()
+        return equipamientos
+    except odbc.Error as e:
+        print("Error al obtener equipamientos por actividad:", e)
+        return []
+    finally:
+        conn.close()

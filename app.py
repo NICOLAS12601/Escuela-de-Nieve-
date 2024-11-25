@@ -10,18 +10,23 @@ import ast
 from database_connection import (
     agregar_actividad,
     agregar_clase,
+    agregar_equipamiento,
     agregar_inscripcion,
     agregar_instructor,
     agregar_turno,
     agregar_alumno,
     eliminar_actividad,
     eliminar_clase,
+    eliminar_equipamiento,
     eliminar_inscripcion,
     eliminar_instructor,
     eliminar_turno,
     eliminar_alumno,
+    obtener_actividad_de_clase,
     obtener_actividades,
     obtener_clases,
+    obtener_equipamientos,
+    obtener_equipamientos_por_actividad,
     obtener_inscripciones,
     obtener_instructores,
     obtener_turnos,
@@ -70,6 +75,7 @@ def login(n_clicks, correo, contrasena):
                 dcc.Tab(label="ABM Instructores", value="abm_instructores"),
                 dcc.Tab(label="ABM Turnos", value="abm_turnos"),
                 dcc.Tab(label="ABM Actividades", value="abm_actividades"),
+                dcc.Tab(label="ABM Equipamientos", value="abm_equipamientos"),
                 dcc.Tab(label="ABM Alumnos", value="abm_alumnos"),
                 dcc.Tab(label="ABM Clases", value="abm_clases"),
                 dcc.Tab(label="ABM Inscripciones", value="abm_inscripciones")
@@ -169,14 +175,6 @@ def render_content(tab):
     elif tab == "abm_actividades":
         return html.Div([
             html.H1("ABM Actividades"),
-            dcc.Loading(
-                id="loading-activities",
-                type="default",
-                children=[
-                    html.Table(id="activities-table", style={"width": "100%", "margin": "0 auto", "textAlign": "center"}),
-                    html.Div(id="activity-message", style={"textAlign": "center", "marginTop": "10px"}),
-                ]
-            ),
             html.Div(style={'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center', 'gap': '10px'}, children=[
                 dcc.Input(id="input-id", type="hidden"),  # Para almacenar el ID si es una edición
                 html.Label("Descripción:"),
@@ -184,7 +182,73 @@ def render_content(tab):
                 html.Label("Costo:"),
                 dcc.Input(id="input-costo", type="number"),
                 html.Button("Guardar", id="save-activity-btn", n_clicks=0),
-            ])
+            ]),
+            dcc.Loading(
+                id="loading-activities",
+                type="default",
+                children=[
+                    html.Table(id="activities-table", style={"width": "100%", "margin": "0 auto", "textAlign": "center"}),
+                    html.Div(id="activity-message", style={"textAlign": "center", "marginTop": "10px"}),
+                ]
+            )
+        ])
+    
+    elif tab == "abm_equipamientos":
+        # Obtener las actividades para el menú desplegable
+        actividades = obtener_actividades()
+        opciones_actividades = [{'label': act[1], 'value': act[0]} for act in actividades]
+
+        return html.Div([
+            html.H1("ABM Equipamientos"),
+            # Formulario para agregar equipamientos
+            html.Div(
+                style={
+                    'display': 'flex', 
+                    'justifyContent': 'center', 
+                    'alignItems': 'center', 
+                    'flexWrap': 'wrap', 
+                    'gap': '10px',
+                    'maxWidth': '1000px',  # Limitar el ancho máximo del contenedor
+                    'margin': '0 auto'     # Centrar el contenedor
+                }, 
+                children=[
+                    dcc.Input(id="input-equipment-id", type="hidden"), 
+
+                    html.Div([
+                        html.Label("Descripción:"),
+                        dcc.Input(id="input-equipment-descripcion", type="text", style={'width': '100%'}),
+                    ], style={'flex': '1', 'minWidth': '200px'}),
+
+                    html.Div([
+                        html.Label("Costo:"),
+                        dcc.Input(id="input-equipment-costo", type="number", style={'width': '100%'}),
+                    ], style={'flex': '1', 'minWidth': '150px'}),
+
+                    html.Div([
+                        html.Label("Actividad:"),
+                        dcc.Dropdown(
+                            id="dropdown-equipment-actividad",
+                            options=opciones_actividades,
+                            placeholder="Seleccione una actividad",
+                            style={'width': '100%'}
+                        ),
+                    ], style={'flex': '1', 'minWidth': '200px'}),
+
+                    html.Div([
+                        html.Button("Guardar", id="save-equipment-btn", n_clicks=0, style={'width': '100%', 'height': '38px'}),
+                    ], style={'flex': '1', 'minWidth': '100px', 'alignSelf': 'flex-end'}),  # alignSelf para alinear el botón
+                ]
+            ),
+            # Mensaje de resultado
+            html.Div(id="equipment-message", style={"textAlign": "center", "marginTop": "10px"}),
+            # La tabla de equipamientos debajo del formulario
+            dcc.Loading(
+                id="loading-equipments",
+                type="default",
+                children=[
+                    html.Table(id="equipments-table", style={"width": "100%", "margin": "0 auto", "textAlign": "center"}),
+                ]
+            )
         ])
 
     elif tab == "abm_alumnos":
@@ -313,7 +377,8 @@ def render_content(tab):
         # Obtener datos para los menús desplegables
         clases = obtener_clases()
         alumnos = obtener_alumnos()
-        # Convertir clases y alumnos en opciones para los dropdowns
+        equipamientos = obtener_equipamientos()
+        
         # Opciones para clases
         clases_options = []
         for clase in clases:
@@ -328,11 +393,9 @@ def render_content(tab):
         # Opciones para alumnos
         alumnos_options = [{'label': f"{alumno[1]} {alumno[2]} (CI: {alumno[0]})", 'value': alumno[0]} for alumno in alumnos]
         
-        # Opciones para equipamiento
-        equipamiento_options = [
-            {'label': 'Sí', 'value': 1},
-            {'label': 'No', 'value': 0}
-        ]
+        # Opciones para equipamientos
+        equipamiento_options = [{'label': f"{equip[1]} ({equip[3]})", 'value': str(equip[0])} for equip in equipamientos]
+        equipamiento_options.insert(0, {'label': 'No alquiló equipamiento', 'value': 'no'})
         
         return html.Div([
             html.H1("ABM Inscripciones"),
@@ -351,11 +414,11 @@ def render_content(tab):
                     placeholder="Seleccione un alumno"
                 ),
                 html.Br(),
-                html.Label("¿Alquila equipamiento?"),
+                html.Label("Equipamiento:"),
                 dcc.Dropdown(
                     id="dropdown-equipamiento",
                     options=equipamiento_options,
-                    placeholder="Seleccione una opción"
+                    placeholder="Seleccione un equipamiento"
                 ),
                 html.Br(),
                 html.Button("Agregar Inscripción", id="btn-agregar-inscripcion", n_clicks=0),
@@ -372,8 +435,8 @@ def render_content(tab):
                 ]
             )
         ])
-                
-        # Si la pestaña no coincide, no actualizamos nada
+    
+            # Si la pestaña no coincide, no actualizamos nada
         return dash.no_update
 
 # Callback unificado para los reportes
@@ -397,9 +460,21 @@ def update_reports(income_clicks, students_clicks, turns_clicks):
     # Generar reporte de ingresos
     if button_id == "generate-income-report":
         data = reporte_actividades_mayor_ingreso()
-        data = [(actividad, float(ingreso) if isinstance(ingreso, Decimal) else ingreso) for actividad, ingreso in data]
-        if data:
-            df = pd.DataFrame(data, columns=["Actividad", "Ingresos Totales"])
+        data_list = [
+            {
+                "Actividad": actividad,
+                "Ingresos Actividad": float(ingresos_actividad) if isinstance(ingresos_actividad, Decimal) else ingresos_actividad,
+                "Ingresos Equipamiento": float(ingresos_equipamiento) if isinstance(ingresos_equipamiento, Decimal) else ingresos_equipamiento,
+                "Ingresos Totales": float(ingresos_totales) if isinstance(ingresos_totales, Decimal) else ingresos_totales
+            }
+            for actividad, ingresos_actividad, ingresos_equipamiento, ingresos_totales in data
+        ]
+        if data_list:
+            df = pd.DataFrame(data_list)
+            # Opcional: Formatear los números
+            df["Ingresos Actividad"] = df["Ingresos Actividad"].map(lambda x: f"${x:,.2f}")
+            df["Ingresos Equipamiento"] = df["Ingresos Equipamiento"].map(lambda x: f"${x:,.2f}")
+            df["Ingresos Totales"] = df["Ingresos Totales"].map(lambda x: f"${x:,.2f}")
             table = html.Table([
                 html.Thead(html.Tr([html.Th(col) for col in df.columns])),
                 html.Tbody([
@@ -855,15 +930,38 @@ def cargar_inscripciones():
     inscripciones = obtener_inscripciones()
     if inscripciones:
         df = pd.DataFrame(inscripciones)
+        # Asegúrate de que los nombres de las columnas están correctos
+        print("Columnas del DataFrame:", df.columns)
         # Reorganizar las columnas
-        df = df[["id_clase", "ci_alumno", "alumno_nombre", "alumno_apellido", "actividad_descripcion", "instructor_nombre", "instructor_apellido", "hora_inicio", "hora_fin", "alquiler"]]
+        df = df[[
+            "id_clase",
+            "ci_alumno",
+            "alumno_nombre",
+            "alumno_apellido",
+            "actividad_descripcion",
+            "instructor_nombre",
+            "instructor_apellido",
+            "hora_inicio",
+            "hora_fin",
+            "equipamiento_descripcion",
+        ]]
         df["hora_inicio"] = pd.to_datetime(df["hora_inicio"]).dt.strftime("%H:%M")
         df["hora_fin"] = pd.to_datetime(df["hora_fin"]).dt.strftime("%H:%M")
-        df.columns = ["ID Clase", "CI Alumno", "Nombre Alumno", "Apellido Alumno", "Actividad", "Nombre Instructor", "Apellido Instructor", "Hora Inicio", "Hora Fin", "Alquiler"]
+        df.columns = [
+            "ID Clase",
+            "CI Alumno",
+            "Nombre Alumno",
+            "Apellido Alumno",
+            "Actividad",
+            "Nombre Instructor",
+            "Apellido Instructor",
+            "Hora Inicio",
+            "Hora Fin",
+            "Equipamiento",
+        ]
 
-        # Mapear alquiler a Sí/No
-        df["Alquiler"] = df["Alquiler"].apply(lambda x: "Sí" if x else "No")
-        
+        # Reemplazar valores nulos en "Equipamiento" con "No alquiló equipamiento"
+        df["Equipamiento"] = df["Equipamiento"].fillna("No alquiló equipamiento")
         return html.Table([
             html.Thead(html.Tr([html.Th(col) for col in df.columns] + [html.Th("Eliminar")])),
             html.Tbody([
@@ -896,7 +994,7 @@ def cargar_inscripciones():
      State("dropdown-alumno", "value"),
      State("dropdown-equipamiento", "value")],
 )
-def manejar_inscripciones(tab, n_clicks_agregar, delete_n_clicks, clase_id, ci_alumno, alquiler):
+def manejar_inscripciones(tab, n_clicks_agregar, delete_n_clicks, clase_id, ci_alumno, id_equipamiento):
     ctx = dash.callback_context
 
     if tab != "abm_inscripciones":
@@ -911,8 +1009,26 @@ def manejar_inscripciones(tab, n_clicks_agregar, delete_n_clicks, clase_id, ci_a
 
     # Si se presionó el botón de agregar inscripción
     if triggered_id == "btn-agregar-inscripcion":
-        if clase_id and ci_alumno and alquiler is not None:
-            resultado = agregar_inscripcion(clase_id, ci_alumno, alquiler)
+        if clase_id and ci_alumno:
+            if id_equipamiento == 'no':
+                id_equipamiento = None
+                alquiler = 0
+            else:
+                alquiler = 1
+                id_equipamiento = int(id_equipamiento)  # Convertir a entero
+
+            # Obtener el id_actividad de la clase
+            id_actividad_clase = obtener_actividad_de_clase(clase_id)
+
+            # Si se seleccionó equipamiento, obtener el id_actividad del equipamiento
+            if id_equipamiento:
+                id_actividad_equipamiento = obtener_actividad_de_equipamiento(id_equipamiento)
+                # Validar que las actividades coincidan
+                if id_actividad_clase != id_actividad_equipamiento:
+                    return dash.no_update, dbc.Alert("El equipamiento seleccionado no corresponde a la actividad de la clase.", color="danger")
+
+            # Proceder a agregar la inscripción
+            resultado = agregar_inscripcion(clase_id, ci_alumno, id_equipamiento, alquiler)
             if resultado == "ok":
                 return cargar_inscripciones(), dbc.Alert("Inscripción agregada exitosamente.", color="success")
             else:
@@ -933,6 +1049,119 @@ def manejar_inscripciones(tab, n_clicks_agregar, delete_n_clicks, clase_id, ci_a
             return dash.no_update, dbc.Alert("Error al eliminar la inscripción.", color="danger")
 
     return dash.no_update, ""
+
+# Función para cargar la lista de equipamientos
+@app.callback(
+    Output("equipments-table", "children"),
+    Input("tabs", "value")
+)
+def cargar_equipamientos(tab):
+    if tab == "abm_equipamientos":
+        equipamientos = obtener_equipamientos()
+        print("Datos de equipamientos:", equipamientos)  # Depuración
+
+        if equipamientos and all(len(equip) == 4 for equip in equipamientos):
+            equipamientos_procesados = [
+                (int(equip_id), descripcion, float(costo), actividad_descripcion) 
+                for equip_id, descripcion, costo, actividad_descripcion in equipamientos
+            ]
+
+            df = pd.DataFrame(equipamientos_procesados, columns=["ID", "Descripción", "Costo", "Actividad"])
+
+            return html.Table([
+                html.Thead(html.Tr([html.Th(col) for col in df.columns] + [html.Th("Eliminar")])),
+                html.Tbody([
+                    html.Tr([
+                        html.Td(df.iloc[i][col]) for col in df.columns
+                    ] + [
+                        html.Td(
+                            html.Button("X", id={"type": "delete-equipment-btn", "index": int(df.iloc[i]["ID"])})
+                        )
+                    ])
+                    for i in range(len(df))
+                ])
+            ], style={"width": "100%", "margin": "0 auto", "textAlign": "center"})
+        else:
+            return "No hay equipamientos disponibles."
+    return dash.no_update
+
+# Callback para agregar equipamientos
+@app.callback(
+    [Output("equipments-table", "children", allow_duplicate=True),
+     Output("equipment-message", "children", allow_duplicate=True)],
+    Input("save-equipment-btn", "n_clicks"),
+    State("input-equipment-descripcion", "value"),
+    State("input-equipment-costo", "value"),
+    State("dropdown-equipment-actividad", "value"),
+    State("tabs", "value"),
+    prevent_initial_call=True
+)
+def agregar_equipamiento_callback(save_n_clicks, descripcion, costo, id_actividad, tab):
+    if tab != "abm_equipamientos":
+        return dash.no_update, ""
+    
+    if save_n_clicks and save_n_clicks > 0:
+        if descripcion and costo and id_actividad:
+            resultado = agregar_equipamiento(descripcion, costo, id_actividad)
+            if resultado == "ok":
+                # Opcionalmente, limpiar los campos de entrada
+                return cargar_equipamientos("abm_equipamientos"), "Equipamiento agregado exitosamente."
+            else:
+                return dash.no_update, "Error al agregar equipamiento."
+        return dash.no_update, "Error: Todos los campos son obligatorios"
+    return dash.no_update, ""
+
+# Callback para eliminar equipamientos
+@app.callback(
+    [Output("equipments-table", "children", allow_duplicate=True),
+     Output("equipment-message", "children", allow_duplicate=True)],
+    Input({"type": "delete-equipment-btn", "index": ALL}, "n_clicks_timestamp"),
+    State("tabs", "value"),
+    prevent_initial_call=True
+)
+def eliminar_equipamiento_callback(n_clicks_timestamps, tab):
+    if tab != "abm_equipamientos":
+        return dash.no_update, ""
+    
+    if not n_clicks_timestamps or all(ts is None or ts == 0 for ts in n_clicks_timestamps):
+        return dash.no_update, ""
+    
+    ctx = dash.callback_context
+    max_ts = max([ts if ts is not None else 0 for ts in n_clicks_timestamps])
+    if max_ts > 0:
+        idx = n_clicks_timestamps.index(max_ts)
+        delete_ids = [input['id'] for input in ctx.inputs_list[0]]
+        equipment_id = delete_ids[idx]['index']
+        resultado = eliminar_equipamiento(equipment_id)
+        if resultado == "ok":
+            return cargar_equipamientos("abm_equipamientos"), "Equipamiento eliminado exitosamente."
+        elif resultado == "referenciado":
+            return dash.no_update, "Error: No se puede eliminar el equipamiento porque está siendo utilizado."
+        else:
+            return dash.no_update, "Error al eliminar el equipamiento."
+    return dash.no_update, ""
+
+@app.callback(
+    Output("dropdown-equipamiento", "options"),
+    Input("dropdown-clase", "value")
+)
+def actualizar_equipamientos(clase_id):
+    if clase_id:
+        # Obtener el id_actividad de la clase
+        id_actividad_clase = obtener_actividad_de_clase(clase_id)
+        if id_actividad_clase:
+            # Obtener equipamientos correspondientes a esa actividad
+            equipamientos = obtener_equipamientos_por_actividad(id_actividad_clase)
+            # Crear las opciones para el dropdown
+            equipamiento_options = [{'label': f"{equip[1]} ({equip[3]})", 'value': str(equip[0])} for equip in equipamientos]
+            equipamiento_options.insert(0, {'label': 'No alquiló equipamiento', 'value': 'no'})
+            return equipamiento_options
+        else:
+            # Si no se pudo obtener el id_actividad de la clase
+            return [{'label': 'No alquiló equipamiento', 'value': 'no'}]
+    else:
+        # Si no se ha seleccionado una clase, mostrar solo la opción de 'No alquiló equipamiento'
+        return [{'label': 'No alquiló equipamiento', 'value': 'no'}]
 
 # Correr la aplicación
 if __name__ == '__main__':
