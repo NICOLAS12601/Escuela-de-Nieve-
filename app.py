@@ -23,6 +23,7 @@ from database_connection import (
     eliminar_turno,
     eliminar_alumno,
     obtener_actividad_de_clase,
+    obtener_actividad_de_equipamiento,
     obtener_actividades,
     obtener_clases,
     obtener_equipamientos,
